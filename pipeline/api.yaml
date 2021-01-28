@@ -1,0 +1,30 @@
+protoToGo:
+  vomb/x/git.Subscribe:
+    git: ${ctx.GIT}
+    pathGlob: ${ctx.PATH}/proto/**/*.proto
+    ctx:
+      PATH: api
+      GIT: github.com/vomb/baikal
+  vomb/x/dir.FromGit:
+    path: ${ctx.PATH}/proto
+  vomb/x/proto.ToGo:
+    package: api
+  vomb/x/dir.ToGit:
+    git: ${ctx.GIT}
+    path: ${ctx.PATH}
+    deletePattern: "**/*.go"
+    fromPath: ${path}
+---
+protoToGo:
+  vomb/x/git.Subscribe:
+    git: github.com/vomb/baikal
+    pathGlob: api/proto/**/*.proto
+  vomb/x/dir.FromGit:
+    path: api/proto
+  vomb/x/proto.ToGo:
+    package: api
+  vomb/x/dir.ToGit:
+    fromPath: ${path}
+    git: github.com/vomb/baikal
+    path: api
+    deletePattern: "**/*.go"
