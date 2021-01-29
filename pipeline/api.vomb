@@ -4,16 +4,24 @@ import (
   "vomb/x/proto"
 )
 
+// старт пайплайна с именем как у файла (api)
+
+// объект параметров, на который можно ссылаться
+// все объекты имеют глобальный путь
+// например этот
+// github.com/vomb/baikal/pipeline/api.config
+// или в рамках текущей области видимости просто config
 ctx config {
   string git = "github.com/vomb/baikal"
   string branch = "master"
-  string key
+  string key // должна быть объявлена снаружи при запуске пайплайна, например при подключении репы определена переменная pipeline.api.config.key
   
   from = "api/proto"
   to = "api"
   package = "api"
 }
 
+// запуск таски под именем apiChange
 task apiChange = git.Subscribe({
   git: config.git,
   key: config.key,
@@ -21,23 +29,27 @@ task apiChange = git.Subscribe({
   glob: config.from + "/**/*.proto",
 })
 
+// биндинг потока событий из apiChange в подпайплайн onChangeGenerate
 apiChange.each (change) {
   onChangeGenerate({
-    commit: {
+    commit: { // доопределение внутренних ctx переменных
       git: change.git,
       ref: change.ref,
     }
   })
 }
 
+// дочерний пайплайн (api.onChangeGenerate)
 pipeline onChangeGenerate {
+  // при запуске данного пайлайна нет никаких подписок и т.д., поэтому просто все таски выполнятся последовательно один раз.
   ctx commit {
-    string git
+    string git = config.git
     string ref
   }
 
-  protoDir = dir.EmptyDir()
-  goDir = dir.EmptyDir()
+  workDir = dir.EmptyDir() // провайдер пустой временной дериктории, так как ресурс выделен на ноде, то и таски использующие ресурс запустятся на той же ноде в том же контейнере
+  protoDir = workDir.MakeDir("./proto")
+  goDir = workDir.MakeDir("./go")
   
   dir.FromGit({
     git: commit.git,
