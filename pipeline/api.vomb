@@ -1,0 +1,69 @@
+import (
+  "vomb/x/git"
+  "vomb/x/dir"
+  "vomb/x/proto"
+)
+
+ctx config {
+  string git = "github.com/vomb/baikal"
+  string branch = "master"
+  string key
+  
+  from = "api/proto"
+  to = "api"
+  package = "api"
+}
+
+task apiChange = git.Subscribe({
+  git: config.git,
+  key: config.key,
+  branch: config.branch,
+  glob: config.from + "/**/*.proto",
+})
+
+apiChange.each (change) {
+  onChangeGenerate({
+    commit: {
+      git: change.git,
+      ref: change.ref,
+    }
+  })
+}
+
+pipeline onChangeGenerate {
+  ctx commit {
+    string git
+    string ref
+  }
+
+  protoDir = dir.EmptyDir()
+  goDir = dir.EmptyDir()
+  
+  dir.FromGit({
+    git: commit.git,
+    ref: commit.ref,
+    key: config.key,    
+    
+    from: config.from,
+    to: protoDir,
+  })
+  
+  proto.ToGo({
+    from: protoDir,
+    to: goDir,
+    package: config.package,
+  })
+  
+  proto.ToGit({
+    git: config.git,
+    from: goDir,
+    to: config.to,
+    
+    git: config.git,
+    key: config.key,
+    branch: config.branch,
+    
+    deletePattern: "**/*.go",
+  })
+}
+
